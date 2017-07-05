@@ -2,12 +2,15 @@
 using AntShares.SmartContract.Framework.Services.AntShares;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace AntShares.SmartContract
 {
     public class Poll : FunctionCode
     {
+        internal const int POLL_ID_LENGTH = 32;
+
         private const string POLL_ID_LIST_KEY = "polls";
 
         #region Operation constants
@@ -27,7 +30,7 @@ namespace AntShares.SmartContract
         #endregion Operation constants
 
         private const int MAX_QUESTION_LENGTH = 128;
-        private const int MAX_POLL_RESPONSE_OPTIONS = 30; // TODO Should probably be a smaller value
+        private const int MAX_POLL_RESPONSE_OPTIONS = 30;
 
         public static object Main(string operation, params object[] args)
         {
@@ -71,8 +74,6 @@ namespace AntShares.SmartContract
         /// <returns>Poll identifier if successfully created, otherwise error</returns>
         private static byte[] CreatePoll(byte[] poller, byte[] signature, string question, string[] options)
         {
-            // TODO Return more specific error values
-
             if (!VerifySignature(poller, signature)) return null;
 
             // Validate question length
@@ -126,7 +127,8 @@ namespace AntShares.SmartContract
             // Store poll
             Storage.Put(Storage.CurrentContext, pollId, poll);
 
-            // TODO Add to list of polls
+            // Add to list of polls
+            AddToPollIdList(pollId);
 
             // Poll created, return poll identifier
             return pollId;
@@ -134,8 +136,6 @@ namespace AntShares.SmartContract
 
         private static bool EditPoll(byte[] poller, byte[] signature, byte[] pollId)
         {
-            // TODO Return more specific error values
-
             var poll = Storage.Get(Storage.CurrentContext, pollId);
 
             if (poll == null) return false;
@@ -150,8 +150,6 @@ namespace AntShares.SmartContract
 
         private static bool ClosePoll(byte[] poller, byte[] signature, byte[] pollId)
         {
-            // TODO Return more specific error values
-
             var poll = Storage.Get(Storage.CurrentContext, pollId);
 
             if (poll == null) return false;
@@ -166,8 +164,6 @@ namespace AntShares.SmartContract
 
         private static bool DeletePoll(byte[] poller, byte[] signature, byte[] pollId)
         {
-            // TODO Return more specific error values
-
             var poll = Storage.Get(Storage.CurrentContext, pollId);
 
             if (poll == null) return false;
@@ -176,7 +172,8 @@ namespace AntShares.SmartContract
 
             Storage.Delete(Storage.CurrentContext, pollId);
 
-            // TODO Remove from list of polls
+            // Remove from list of polls
+            RemoveFromPollIdList(pollId);
 
             return true;
         }
@@ -185,16 +182,46 @@ namespace AntShares.SmartContract
         #region Poll response operations
         private static bool RespondToPoll(byte[] responder, byte[] signature, byte[] pollId, byte response)
         {
-            // TODO Implement
+            if (!VerifySignature(responder, signature)) return false;
 
+            var encodedPoll = Storage.Get(Storage.CurrentContext, pollId);
 
+            var updatedPoll = PollEncoder.AddResponse(encodedPoll, responder, response);
+
+            // Successfully responded to poll
+            return true;
         }
                 
         private static bool UpdatePollResponse(byte[] responder, byte[] signature, byte[] pollId, byte newResponse)
         {
-            // TODO Implement
+            if (!VerifySignature(responder, signature)) return false;
 
+            var encodedPoll = Storage.Get(Storage.CurrentContext, pollId);
 
+            if (encodedPoll == null) return false;
+
+            // Decode poll
+            bool isOpen;
+            byte[] poller;
+            string question;
+            Dictionary<byte, string> options;
+            Dictionary<byte[], byte> responses;
+            PollEncoder.Decode(encodedPoll, out isOpen, out poller, out question, out options, out responses);
+
+            // Check responder has responded previously
+            if (!responses.ContainsKey(responder)) return false;
+
+            // Replace with new response
+            responses[responder] = newResponse;
+
+            // Encode updated poll
+            var encodedUpdatedPoll = PollEncoder.Encode(isOpen, poller, question, options, responses);
+
+            // Store encoded poll
+            Storage.Put(Storage.CurrentContext, pollId, encodedUpdatedPoll);
+
+            // Successfully updated response to poll
+            return true;
         }
         #endregion Poll response operations
         
@@ -205,7 +232,7 @@ namespace AntShares.SmartContract
 
             if (poll == null) return null;
 
-            // TODO Get poll responses
+            // Get responses
             bool isOpen;
             byte[] poller;
             string question;
@@ -251,6 +278,7 @@ namespace AntShares.SmartContract
                     }
 
                     // Encoded successfully
+                    writer.Flush();
                     return stream.ToArray();
                 }
             }
@@ -258,21 +286,150 @@ namespace AntShares.SmartContract
 
         private static byte[] GetPolls()
         {
-            var encodedPollIdList = Storage.Get(Storage.CurrentContext, POLL_ID_LIST_KEY);
+            var pollIds = GetPollIdList();
 
-            // TODO Should it return an empty list instead?
-            if (encodedPollIdList == null) return null;
+            // Build encoded list of poll identifiers and their corresponding questions
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    // Write number of polls
+                    writer.Write(pollIds.Count);
 
-            // Decode to list of poll identifiers
-            // TODO Implement
+                    foreach (var pollId in pollIds)
+                    {
+                        // Get encoded poll
+                        var encodedPoll = Storage.Get(Storage.CurrentContext, pollId);
 
-            // Build list of poll identifiers and their corresponding questions
-            // TODO Implement
+                        // Get poll question
+                        var pollQuestion = PollEncoder.DecodeQuestion(encodedPoll);
 
+                        var encodedQuestion = Encoding.UTF8.GetBytes(pollQuestion);
 
-            // Successfully retrieved polls
-            return polls;
+                        
+                        // Write poll identifier
+                        writer.Write(pollId);
+
+                        // Write encoded question length
+                        writer.Write(encodedQuestion.Length);
+
+                        // Write encoded question
+                        writer.Write(encodedQuestion);
+                    }
+
+                    // Encoded successfully
+                    writer.Flush();
+                    return stream.ToArray();
+                }
+            }
         }
         #endregion Poll querying methods
+
+        #region Poll identifier list methods
+        private static bool AddToPollIdList(byte[] pollId)
+        {
+            var pollIdList = GetPollIdList();
+
+            try
+            {
+                // Check if identifier is already in the list
+                var pollIdAlreadyInList = pollIdList.Any(id => id.SequenceEqual(pollId));
+
+                if (pollIdAlreadyInList) return false;
+
+                // Add poll identifier to list
+                pollIdList.Add(pollId);
+
+                UpdatePollIdList(pollIdList);
+
+                // Added successfully
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool RemoveFromPollIdList(byte[] pollId)
+        {
+            var pollIdList = GetPollIdList();
+
+            try
+            {
+                // Remove poll identifier from list
+                pollIdList.Remove(pollId);
+
+                UpdatePollIdList(pollIdList);
+
+                // Removed successfully
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static List<byte[]> GetPollIdList()
+        {
+            var encodedPollIdList = Storage.Get(Storage.CurrentContext, POLL_ID_LIST_KEY);
+
+            var pollIdList = new List<byte[]>();
+
+            if (encodedPollIdList == null) return pollIdList;
+
+            // Decode to list of poll identifiers
+            using (var stream = new MemoryStream())
+            {
+                using (var reader = new BinaryReader(stream))
+                {
+                    // Read number of poll identifiers
+                    var pollIdCount = reader.ReadUInt32();
+
+                    for (uint i = 0; i < pollIdCount; i++)
+                    {
+                        // Read poll identifier
+                        var pollId = reader.ReadBytes(POLL_ID_LENGTH);
+
+                        pollIdList.Add(pollId);
+                    }
+
+                    // Decoded successfully
+                    return pollIdList;
+                }
+            }
+        }
+
+        private static bool UpdatePollIdList(List<byte[]> newPollIdList)
+        {
+            if (newPollIdList == null) return false;
+
+            // Encode list of poll identifiers
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    // Write number of poll identifiers
+                    writer.Write((uint) newPollIdList.Count);
+
+                    foreach (var pollId in newPollIdList)
+                    {
+                        // Write poll identifier
+                        writer.Write(pollId);                       
+                    }
+
+                    // Encoded successfully
+                    writer.Flush();
+                    var encodedPollIdList = stream.ToArray();
+
+                    // Store new encoded poll identifier list
+                    Storage.Put(Storage.CurrentContext, POLL_ID_LIST_KEY, encodedPollIdList);
+
+                    return true;
+                }
+            }
+        }
+        #endregion Poll identifier list methods
     }
 }

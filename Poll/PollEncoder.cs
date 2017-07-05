@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -14,34 +15,22 @@ namespace AntShares.SmartContract
                 {
                     try
                     {
-                        /* Poll status */
-                        // Write is open property
-                        writer.Write(isOpen);
+                        // Encode header
+                        EncodeHeader(writer, poller, isOpen, question, options.Count);
                         
 
-                        /* Poller address */
-                        // Write address length
-                        writer.Write(poller.Length);
-
-                        // Write address
-                        writer.Write(poller);
-
-
-                        /* Question */
                         // Encode question
                         var questionBytes = Encoding.UTF8.GetBytes(question);
 
-                        // Write question length
-                        writer.Write(questionBytes.Length);
-
-                        // Write question
+                        // Write encoded question
                         writer.Write(questionBytes);
 
 
-                        /* Options */
+                        // Write poller address
+                        writer.Write(poller);
 
-                        // Write number of options
-                        writer.Write(options.Count);
+
+                        /* Options */
 
                         // Write options
                         foreach (var option in options)
@@ -74,14 +63,7 @@ namespace AntShares.SmartContract
                             // Write responses
                             foreach (var response in responses)
                             {
-                                // Write responder address length
-                                writer.Write(response.Key.Length);
-
-                                // Write responder address
-                                writer.Write(response.Key);
-
-                                // Write response
-                                writer.Write(response.Value);
+                                EncodeResponse(writer, response.Key, response.Value);
                             }
                         }
 
@@ -106,22 +88,12 @@ namespace AntShares.SmartContract
                 {
                     try
                     {
-                        /* Poll status */
-                        // Read is open property
-                        isOpen = reader.ReadBoolean();
-
-
-                        /* Poller address */
-                        // Read address length
-                        var pollerAddressLength = reader.ReadInt32();
-
-                        // Read address
-                        poller = reader.ReadBytes(pollerAddressLength);
-
-
-                        /* Question */
-                        // Read question length
-                        var questionLength = reader.ReadInt32();
+                        // Decode header
+                        int pollerAddressLength;
+                        int questionLength;
+                        int optionsCount;
+                        DecodeHeader(reader, out pollerAddressLength, out questionLength, out optionsCount, out isOpen);
+                                                
 
                         // Read encoded question
                         var questionBytes = reader.ReadBytes(questionLength);
@@ -130,11 +102,12 @@ namespace AntShares.SmartContract
                         question = Encoding.UTF8.GetString(questionBytes);
 
 
+                        // Read poller address
+                        poller = reader.ReadBytes(pollerAddressLength);
+
+
                         /* Options */
                         options = new Dictionary<byte, string>();
-
-                        // Read number of options
-                        var optionsCount = reader.ReadInt32();
 
                         // Read options
                         for (var i = 0; i < optionsCount; i++)
@@ -163,14 +136,9 @@ namespace AntShares.SmartContract
                         // Read responses
                         for (var i = 0; i < responsesCount; i++)
                         {
-                            // Read responder address length
-                            var responderAddressLength = reader.ReadInt32();
-
-                            // Read responder address
-                            var responderAddress = reader.ReadBytes(responderAddressLength);
-
-                            // Read response
-                            var response = reader.ReadByte();
+                            byte[] responderAddress;
+                            byte response;
+                            DecodeResponse(reader, out responderAddress, out response);
 
                             responses.Add(responderAddress, response);
                         }
@@ -188,6 +156,114 @@ namespace AntShares.SmartContract
                         responses = null;
 
                         return false;
+                    }
+                }
+            }
+        }
+
+        private static void EncodeHeader(BinaryWriter writer, byte[] poller, bool isOpen, string question, int optionCount)
+        {
+            // Write question length
+            writer.Write(Encoding.UTF8.GetByteCount(question));
+
+            // Write poller address length
+            writer.Write(poller.Length);
+
+            // Write number of options
+            writer.Write(optionCount);
+
+            // Write is open property
+            writer.Write(isOpen);
+        }
+
+        private static void DecodeHeader(BinaryReader reader, out int pollerAddressLength, out int questionLength, out int optionsCount, out bool isOpen)
+        {
+            // Read question length
+            questionLength = reader.ReadInt32();
+
+            // Read poller address length
+            pollerAddressLength = reader.ReadInt32();
+
+            // Read number of options
+            optionsCount = reader.ReadInt32();
+
+            // Read is open property
+            isOpen = reader.ReadBoolean();
+        }
+
+        private static void EncodeResponse(BinaryWriter writer, byte[] responderAddress, byte response)
+        {
+            // Write responder address length
+            writer.Write(responderAddress.Length);
+
+            // Write responder address
+            writer.Write(responderAddress);
+
+            // Write response
+            writer.Write(response);
+        }
+
+        private static void DecodeResponse(BinaryReader reader, out byte[] responderAddress, out byte response)
+        {
+            // Read responder address length
+            var responderAddressLength = reader.ReadInt32();
+
+            // Read responder address
+            responderAddress = reader.ReadBytes(responderAddressLength);
+
+            // Read response
+            response = reader.ReadByte();
+        }
+
+
+
+        internal static byte[] AddResponse(byte[] encodedPoll, byte[] responder, byte response)
+        {
+            using (var stream = new MemoryStream(encodedPoll))
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    EncodeResponse(writer, responder, response);
+
+                    stream.Flush();
+                    return stream.ToArray();
+                }
+            }
+        }
+
+        internal static string DecodeQuestion(byte[] encodedPoll)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var reader = new BinaryReader(stream))
+                {
+                    try
+                    {
+                        // Read question length
+                        var questionLength = reader.ReadInt32();
+
+                        // Ignore poller address length
+                        reader.ReadInt32();
+
+                        // Ignore number of options
+                        reader.ReadInt32();
+
+                        // Ignore is open property
+                        reader.ReadBoolean();
+
+
+                        // Read encoded question
+                        var questionBytes = reader.ReadBytes(questionLength);
+
+                        // Decode question
+                        var question = Encoding.UTF8.GetString(questionBytes);
+
+                        // Poll question decoded successfully
+                        return question;
+                    }
+                    catch
+                    {
+                        return null;
                     }
                 }
             }
