@@ -1,2 +1,2 @@
 # Neo.SmartContract.Poll
-Simple polling system using NEO blockchain
+Simple polling system using a Smart Contract on the NEO blockchain
