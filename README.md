@@ -1,2 +1,2 @@
-# Neo.SmartContract.Poll
-Simple polling system using a Smart Contract on the NEO blockchain
+# SurveyChain
+Survey creation and response management system using a NEO Smart Contract. Survey responders are incentivised by being paid a certain amount of GAS by the survey creator.

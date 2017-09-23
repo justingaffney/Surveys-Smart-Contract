@@ -3,7 +3,12 @@
 ################################################################################
 
 /.vs
-/Poll/obj
-/Poll/obj
-/Poll/obj/Debug/CoreCompileInputs.cache
-/Poll/obj
+/packages
+/Survey.Contract/obj
+/Survey.Contract/bin
+/Survey.Tests.Contract/obj
+/Survey.Tests.Contract/bin
+/Survey.Common/bin/Debug
+/Survey.Common/obj/Debug
+/Survey.Contract.Tests/bin/Debug
+/Survey.Contract.Tests/obj/Debug
