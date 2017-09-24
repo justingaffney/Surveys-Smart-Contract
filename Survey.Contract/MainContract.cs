@@ -19,10 +19,6 @@ namespace Survey.Contract
             {
                 return CloseSurvey();
             }
-            else if (operation == Operations.EDIT) // TODO Should this be an option?
-            {
-                return EditSurvey();
-            }
             else if (operation == Operations.DELETE)
             {
                 return DeleteSurvey();
@@ -32,10 +28,6 @@ namespace Survey.Contract
             else if (operation == Operations.RESPOND)
             {
                 return RespondToSurvey();
-            }
-            else if (operation == Operations.UPDATE_RESPONSE)  // TODO Should this be an option?
-            {
-                return UpdateSurveyResponse();
             }
 
             // Querying operations
@@ -93,13 +85,6 @@ namespace Survey.Contract
             return 2;
         }
 
-        // TODO Should this be an option?
-        private static int EditSurvey()
-        {
-            // TODO Implement
-            return 3;
-        }
-
         private static int DeleteSurvey()
         {
             // TODO Implement
@@ -114,13 +99,6 @@ namespace Survey.Contract
         {
             // TODO Implement
             return 5;
-        }
-
-        // TODO Should this be an option?
-        private static int UpdateSurveyResponse()
-        {
-            // TODO Implement
-            return 6;
         }
 
         #endregion Survey response operations

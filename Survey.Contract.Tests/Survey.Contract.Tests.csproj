@@ -262,8 +262,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="SurveyTests.cs" />
+    <Compile Include="SurveyManagementTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SurveyResponseTests.cs" />
     <Compile Include="TestHelper.cs" />
   </ItemGroup>
   <ItemGroup>
