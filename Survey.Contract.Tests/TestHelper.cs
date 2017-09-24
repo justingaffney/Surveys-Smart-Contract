@@ -95,11 +95,11 @@ namespace Survey.Contract.Tests
                 // Get result
                 var result = engine.EvaluationStack.Peek();
 
-                // TODO Get whether survey was closed successfully
-                var closedSuccessfully = false;
+                // TODO Get whether survey was deleted successfully
+                var deletedSuccessfully = false;
 
 
-                return closedSuccessfully;
+                return deletedSuccessfully;
             }
         }
 
@@ -126,7 +126,7 @@ namespace Survey.Contract.Tests
                 // Get result
                 var result = engine.EvaluationStack.Peek();
 
-                // TODO Get whether survey was closed successfully
+                // TODO Get whether survey response was successful
                 var respondedSuccessfully = false;
 
 

@@ -12,7 +12,7 @@
 
         // Survey query operations
         public const string GET_SURVEYS = "get_surveys";
-        public const string GET_SURVEY_DETAILS = "get_survey_details";
+        public const string GET_SURVEY_METADATA = "get_survey_metadata";
         public const string GET_SURVEY_RESPONSES = "get_survey_responses";
     }
 }

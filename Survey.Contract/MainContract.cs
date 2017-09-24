@@ -1,6 +1,5 @@
-﻿using Neo.SmartContract.Framework.Services.Neo;
-
-using Neo.SmartContract.Framework;
+﻿using Neo.SmartContract.Framework;
+using Neo.SmartContract.Framework.Services.Neo;
 
 using Survey.Common;
 
@@ -8,26 +7,28 @@ namespace Survey.Contract
 {
     public class MainContract : SmartContract
     {
+        private const string ResponsesKey = "responses";
+
         public static object Main(string operation, params object[] args)
         {
             // Management operations
             if (operation == Operations.CREATE)
             {
-                return CreateSurvey((byte[]) args[0], (uint)args[1], (string) args[2]);
+                return CreateSurvey((byte[]) args[0], (byte[]) args[1], (uint) args[2], (string) args[3]);
             }
             else if (operation == Operations.CLOSE)
             {
-                return CloseSurvey();
+                return CloseSurvey((byte[]) args[0], (byte[])args[1], (byte[]) args[2]);
             }
             else if (operation == Operations.DELETE)
             {
-                return DeleteSurvey();
+                return DeleteSurvey((byte[]) args[0], (byte[])args[1], (byte[]) args[2]);
             }
 
             // Response operations
             else if (operation == Operations.RESPOND)
             {
-                return RespondToSurvey();
+                return RespondToSurvey((byte[]) args[0], (byte[])args[1], (byte[]) args[2]);
             }
 
             // Querying operations
@@ -35,13 +36,13 @@ namespace Survey.Contract
             {
                 return GetSurveys();
             }
-            else if (operation == Operations.GET_SURVEY_DETAILS)
+            else if (operation == Operations.GET_SURVEY_METADATA)
             {
-                return GetSurveyDetails();
+                return GetSurveyMetadata((byte[]) args[0]);
             }
             else if (operation == Operations.GET_SURVEY_RESPONSES)
             {
-                return GetSurveyResponses();
+                return GetSurveyResponses((byte[]) args[0]);
             }
 
             else
@@ -52,77 +53,146 @@ namespace Survey.Contract
 
         #region Survey management operations
 
-        private static byte[] CreateSurvey(byte[] creator, uint blockDuration, string description)//, string[] questions)
+        private static byte[] CreateSurvey(byte[] creator, byte[] signature, uint blockDuration, string description)
         {
-            // TODO Verify creator can create survey
+            // Verify creator chose to create survey
+            if (!VerifySignature(signature, creator)) return new byte[0];
 
 
             // Generate survey identifier
             var height = Blockchain.GetHeight();
+            
+            var surveyId = Sha1(Helper.Concat(Helper.Concat(creator, EncodingHelper.AsByteArray(height)), Helper.AsByteArray(description)));
+
 
             var endBlock = height + blockDuration;
             
-            var surveyId = Sha1(Helper.Concat(Helper.Concat(creator, height.AsByteArray()), Helper.AsByteArray(description)));
+            // Encode survey metadata
+            var surveyMetadataBytes = EncodingHelper.EncodeSurveyMetadata(false, endBlock, description);
 
-            // Encode survey information
-            var surveyInfoBytes = EncodeSurveyInfo(endBlock, description);//, questions);
 
-            Storage.Put(Storage.CurrentContext, surveyId, surveyInfoBytes);
+            // Put encoded survey metadata in contract storage
+            Storage.Put(Storage.CurrentContext, surveyId, surveyMetadataBytes);
 
+
+            // Survey successfully created
             return surveyId;
         }
 
-        private static byte[] EncodeSurveyInfo(uint endBlock, string description)
+        private static bool CloseSurvey(byte[] creator, byte[] signature, byte[] surveyId)
         {
-            // TODO Implement
+            // Verify creator chose to close survey
+            if (!VerifySignature(signature, creator)) return false;
+            
 
-            return new byte[] { };
+            // Check survey exists
+            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyId);
+
+            if (surveyMetadataBytes == null || surveyMetadataBytes.Length == 0) return false;
+
+
+            // Check if survey has already been closed
+            var isClosed = EncodingHelper.GetSurveyIsClosed(surveyMetadataBytes);
+
+            if (isClosed) return true;
+
+
+            // Update survey metadata
+            surveyMetadataBytes = EncodingHelper.SetSurveyIsClosed(surveyMetadataBytes);
+
+
+            // Put updated survey metadata in contract storage
+            Storage.Put(Storage.CurrentContext, surveyId, surveyMetadataBytes);
+
+
+            // Survey successfully closed
+            return true;
         }
 
-        private static int CloseSurvey()
+        private static bool DeleteSurvey(byte[] creator, byte[] signature, byte[] surveyId)
         {
-            // TODO Implement
-            return 2;
-        }
+            // Verify creator chose to delete survey
+            if (!VerifySignature(signature, creator)) return false;
 
-        private static int DeleteSurvey()
-        {
-            // TODO Implement
-            return 4;
+
+            // TODO Should this operation check if the survey exists first?
+
+
+            // Delete survey metadata from contract storage
+            Storage.Delete(Storage.CurrentContext, surveyId);
+
+
+            // Delete survey responses
+            var responsesKey = GetSurveyResponsesKey(surveyId);
+
+            Storage.Delete(Storage.CurrentContext, responsesKey);
+
+
+            // Survey successfully deleted
+            return true;
         }
 
         #endregion Survey management operations
 
         #region Survey response operations
         
-        private static int RespondToSurvey()
+        private static bool RespondToSurvey(byte[] responder, byte[] signature, byte[] surveyId)
         {
+            // Verify responder chose to respond
+            if (!VerifySignature(signature, responder)) return false;
+
+
+            var responsesKey = GetSurveyResponsesKey(surveyId);
+
+
             // TODO Implement
-            return 5;
+
+
+            return false;
         }
 
         #endregion Survey response operations
 
+        // TODO Should there be query operations in this smart contract?
+        //      Aren't these expensive transactions for retrieving data?
         #region Survey querying methods
         
-        private static int GetSurveys()
-        {
-            // TODO 
-            return 7;
-        }
-
-        private static int GetSurveyDetails()
+        private static byte[] GetSurveys()
         {
             // TODO Implement
-            return 8;
+
+
+            return new byte[0];
         }
 
-        private static int GetSurveyResponses()
+        private static byte[] GetSurveyMetadata(byte[] surveyId)
         {
-            // TODO Implement
-            return 9;
+            // TODO Authenticate request
+
+
+            return Storage.Get(Storage.CurrentContext, surveyId);
+        }
+
+        private static byte[] GetSurveyResponses(byte[] surveyId)
+        {
+            // TODO Authenticate request
+
+
+            var responsesKey = GetSurveyResponsesKey(surveyId);
+            
+
+            return Storage.Get(Storage.CurrentContext, responsesKey);
         }
 
         #endregion Survey querying methods
+
+        #region Helper Methods
+
+        private static byte[] GetSurveyResponsesKey(byte[] surveyId)
+        {
+            return surveyId.Concat(ResponsesKey.AsByteArray());
+        }
+
+        #endregion Helper Methods
     }
 }
