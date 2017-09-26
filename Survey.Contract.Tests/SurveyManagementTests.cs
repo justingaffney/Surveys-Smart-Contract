@@ -14,7 +14,8 @@ namespace Survey.Contract.Tests
             Assert.NotNull(surveyId);
         }
 
-        [Fact(DisplayName = "Create_Unsuccessful")]
+        [Fact(DisplayName = "Create_Unsuccessful",
+            Skip = "TODO Create unsuccessful parameters")]
         [Trait("Contract", "Management")]
         public void CreateSurveyUnsuccessfullyTest()
         {
@@ -40,7 +41,8 @@ namespace Survey.Contract.Tests
             Assert.True(closeSuccessfully);
         }
 
-        [Fact(DisplayName = "Close_Unsuccessful")]
+        [Fact(DisplayName = "Close_Unsuccessful",
+            Skip = "TODO Create unsuccessful parameters")]
         [Trait("Contract", "Management")]
         public void CloseSurveyUnsuccessfullyTest()
         {
@@ -75,7 +77,8 @@ namespace Survey.Contract.Tests
             Assert.True(deletedSuccessfully);
         }
 
-        [Fact(DisplayName = "Delete_Unsuccessful_Closing_First")]
+        [Fact(DisplayName = "Delete_Unsuccessful_Closing_First",
+            Skip = "TODO Create unsuccessful parameters")]
         [Trait("Contract", "Management")]
         public void DeleteSurveyUnsuccessfullyClosingFirstTest()
         {
@@ -106,7 +109,8 @@ namespace Survey.Contract.Tests
             Assert.True(deletedSuccessfully);
         }
 
-        [Fact(DisplayName = "Delete_Unsuccessful_Not_Closing_First")]
+        [Fact(DisplayName = "Delete_Unsuccessful_Not_Closing_First",
+            Skip = "TODO Create unsuccessful parameters")]
         [Trait("Contract", "Management")]
         public void DeleteSurveyUnsuccessfullyNotClosingFirstTest()
         {

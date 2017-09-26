@@ -17,7 +17,8 @@ namespace Survey.Contract.Tests
             Assert.True(respondedSuccessfully);
         }
 
-        [Fact(DisplayName = "Response_Unsuccessful")]
+        [Fact(DisplayName = "Response_Unsuccessful",
+            Skip = "TODO Create unsuccessful parameters")]
         [Trait("Contract", "Response")]
         public void RespondToSurveyUnsuccessfullyTest()
         {
