@@ -4,7 +4,7 @@ namespace Survey.Contract
 {
     internal static class EncodingHelper
     {
-        #region Survey Encoding and Setter Methods
+        #region Survey Metadata Encoding and Setter Methods
 
         /// <summary>
         ///     Encoding scheme:
@@ -49,7 +49,7 @@ namespace Survey.Contract
             return encodedMetadata;
         }
 
-        #endregion Survey Encoding and Setter Methods
+        #endregion Survey Metadata Encoding and Setter Methods
 
         #region Survey Metadata Decoding Getter Methods
 
@@ -87,7 +87,7 @@ namespace Survey.Contract
         }
 
         #endregion Survey Metadata Decoding Getter Methods
-
+                
         /// <summary>
         /// Little-endian
         /// </summary>

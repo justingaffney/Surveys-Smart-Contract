@@ -7,28 +7,29 @@ namespace Survey.Contract
 {
     public class MainContract : SmartContract
     {
-        private const string ResponsesKey = "responses";
+        private const string MetadataKey = "metadata";
+        private const string RespondersKey = "responders";
 
         public static object Main(string operation, params object[] args)
         {
             // Management operations
             if (operation == Operations.CREATE)
             {
-                return CreateSurvey((byte[]) args[0], (byte[]) args[1], (uint) args[2], (string) args[3]);
+                return CreateSurvey((byte[]) args[0], (uint) args[1], (string) args[2], (byte[]) args[3]);
             }
             else if (operation == Operations.CLOSE)
             {
-                return CloseSurvey((byte[]) args[0], (byte[])args[1], (byte[]) args[2]);
+                return CloseSurvey((byte[]) args[0], (byte[]) args[1]);
             }
             else if (operation == Operations.DELETE)
             {
-                return DeleteSurvey((byte[]) args[0], (byte[])args[1], (byte[]) args[2]);
+                return DeleteSurvey((byte[]) args[0], (byte[])args[1]);
             }
 
             // Response operations
             else if (operation == Operations.RESPOND)
             {
-                return RespondToSurvey((byte[]) args[0], (byte[])args[1], (byte[]) args[2]);
+                return RespondToSurvey((byte[]) args[0], (byte[])args[1], (byte[])args[2]);
             }
 
             // Querying operations
@@ -53,40 +54,48 @@ namespace Survey.Contract
 
         #region Survey management operations
 
-        private static byte[] CreateSurvey(byte[] creator, byte[] signature, uint blockDuration, string description)
+        private static byte[] CreateSurvey(byte[] creator, uint blockDuration, string description, byte[] survey)
         {
             // Verify creator chose to create survey
-            if (!VerifySignature(signature, creator)) return new byte[0];
+            if (!Runtime.CheckWitness(creator)) return new byte[0];
 
 
             // Generate survey identifier
             var height = Blockchain.GetHeight();
             
-            var surveyId = Sha1(Helper.Concat(Helper.Concat(creator, EncodingHelper.AsByteArray(height)), Helper.AsByteArray(description)));
+            var surveyId = GetSurveyId(creator, height, description);
 
 
-            var endBlock = height + blockDuration;
-            
+            // Put survey in contract storage
+            Storage.Put(Storage.CurrentContext, surveyId, survey);
+
+
             // Encode survey metadata
+            var endBlock = height + blockDuration;
+
             var surveyMetadataBytes = EncodingHelper.EncodeSurveyMetadata(false, endBlock, description);
 
 
             // Put encoded survey metadata in contract storage
-            Storage.Put(Storage.CurrentContext, surveyId, surveyMetadataBytes);
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            Storage.Put(Storage.CurrentContext, surveyMetadataKey, surveyMetadataBytes);
 
 
             // Survey successfully created
             return surveyId;
         }
 
-        private static bool CloseSurvey(byte[] creator, byte[] signature, byte[] surveyId)
+        private static bool CloseSurvey(byte[] creator, byte[] surveyId)
         {
             // Verify creator chose to close survey
-            if (!VerifySignature(signature, creator)) return false;
-            
+            if (!Runtime.CheckWitness(creator)) return false;
+
 
             // Check survey exists
-            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyId);
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyMetadataKey);
 
             if (surveyMetadataBytes == null || surveyMetadataBytes.Length == 0) return false;
 
@@ -102,30 +111,57 @@ namespace Survey.Contract
 
 
             // Put updated survey metadata in contract storage
-            Storage.Put(Storage.CurrentContext, surveyId, surveyMetadataBytes);
+            Storage.Put(Storage.CurrentContext, surveyMetadataKey, surveyMetadataBytes);
 
 
             // Survey successfully closed
             return true;
         }
 
-        private static bool DeleteSurvey(byte[] creator, byte[] signature, byte[] surveyId)
+        private static bool DeleteSurvey(byte[] creator, byte[] surveyId)
         {
             // Verify creator chose to delete survey
-            if (!VerifySignature(signature, creator)) return false;
+            if (!Runtime.CheckWitness(creator)) return false;
 
 
-            // TODO Should this operation check if the survey exists first?
+            // Check the survey exists
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            if (surveyMetadataKey == null || surveyMetadataKey.Length == 0) return true;
 
 
-            // Delete survey metadata from contract storage
-            Storage.Delete(Storage.CurrentContext, surveyId);
+            // Get list of responders
+            var respondersKey = GetSurveyRespondersKey(surveyId);
+
+            var responders = GetSurveyResponders(surveyId);
 
 
             // Delete survey responses
-            var responsesKey = GetSurveyResponsesKey(surveyId);
+            int currentIndex = 0;
+            int i = 0;
 
-            Storage.Delete(Storage.CurrentContext, responsesKey);
+            while ((responders.Length - Constants.PublicKeyLengthBytes) > 0)
+            {
+                var responder = responders.Range(currentIndex, Constants.PublicKeyLengthBytes);
+                
+                var responseKey = GetSurveyResponseKey(surveyId, responder);
+
+                // Delete response
+                Storage.Delete(Storage.CurrentContext, responseKey);
+
+
+                currentIndex += Constants.PublicKeyLengthBytes;
+                i++;
+            }
+                        
+            // Delete list of responders
+            Storage.Delete(Storage.CurrentContext, respondersKey);
+
+            // Delete survey
+            Storage.Delete(Storage.CurrentContext, surveyId);
+
+            // Delete survey metadata from contract storage
+            Storage.Delete(Storage.CurrentContext, surveyMetadataKey);
 
 
             // Survey successfully deleted
@@ -136,19 +172,48 @@ namespace Survey.Contract
 
         #region Survey response operations
         
-        private static bool RespondToSurvey(byte[] responder, byte[] signature, byte[] surveyId)
+        private static bool RespondToSurvey(byte[] responder, byte[] surveyId, byte[] response)
         {
-            // Verify responder chose to respond
-            if (!VerifySignature(signature, responder)) return false;
+            // Check response input is valid
+            if (response == null || response.Length == 0) return false;
 
 
-            var responsesKey = GetSurveyResponsesKey(surveyId);
+            // Verify user chose to respond
+            if (!Runtime.CheckWitness(responder)) return false;
 
 
-            // TODO Implement
+            // Check if survey exists
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyMetadataKey);
+
+            if (surveyMetadataBytes == null || surveyMetadataBytes.Length == 0) return false;
 
 
-            return false;
+            // Check if survey is closed
+            var isClosed = EncodingHelper.GetSurveyIsClosed(surveyMetadataBytes);
+
+            if (isClosed) return false;
+            
+
+            // Check if user has already responded to survey
+            var responseKey = GetSurveyResponseKey(surveyId, responder);
+
+            var retrievedResponse = Storage.Get(Storage.CurrentContext, responseKey);
+
+            if (retrievedResponse != null && retrievedResponse.Length > 0) return false;
+
+
+            // User has not responded to survey, store response in contract
+            AddSurveyResponder(surveyId, responder);
+            
+            // TODO Encrypt response so only the creator can read them
+
+            Storage.Put(Storage.CurrentContext, responseKey, response);
+
+            
+            // User successfully responded
+            return true;
         }
 
         #endregion Survey response operations
@@ -156,7 +221,7 @@ namespace Survey.Contract
         // TODO Should there be query operations in this smart contract?
         //      Aren't these expensive transactions for retrieving data?
         #region Survey querying methods
-        
+
         private static byte[] GetSurveys()
         {
             // TODO Implement
@@ -178,19 +243,90 @@ namespace Survey.Contract
             // TODO Authenticate request
 
 
-            var responsesKey = GetSurveyResponsesKey(surveyId);
-            
+            var responses = new byte[0];
 
-            return Storage.Get(Storage.CurrentContext, responsesKey);
+
+            // Get list of responders
+            var responders = GetSurveyResponders(surveyId);
+
+
+            // Get survey responses
+            int currentIndex = 0;
+            int i = 0;
+
+            while ((responders.Length - Constants.PublicKeyLengthBytes) > 0)
+            {
+                var responder = responders.Range(currentIndex, Constants.PublicKeyLengthBytes);
+
+                var responseKey = GetSurveyResponseKey(surveyId, responder);
+
+                // Get response
+                var response = Storage.Get(Storage.CurrentContext, responseKey);
+
+                // TODO Add to list of responses
+
+
+
+                currentIndex += Constants.PublicKeyLengthBytes;
+                i++;
+            }
+
+            return responses;
         }
 
         #endregion Survey querying methods
 
+        #region Storage Methods
+
+        private static void AddSurveyResponder(byte[] surveyId, byte[] responder)
+        {
+            var responders = GetSurveyResponders(surveyId);
+
+            responders = responders.Concat(responder);
+            
+            SetSurveyResponders(surveyId, responders);
+        }
+
+        private static byte[] GetSurveyResponders(byte[] surveyId)
+        {
+            var respondersKey = GetSurveyRespondersKey(surveyId);
+
+            var responders = Storage.Get(Storage.CurrentContext, respondersKey);
+
+            if (responders == null) responders = new byte[0];
+
+            return responders;
+        }
+
+        private static void SetSurveyResponders(byte[] surveyId, byte[] responders)
+        {
+            var respondersKey = GetSurveyRespondersKey(surveyId);
+
+            Storage.Put(Storage.CurrentContext, respondersKey, responders);
+        }
+
+        #endregion Storage Methods
+
         #region Helper Methods
 
-        private static byte[] GetSurveyResponsesKey(byte[] surveyId)
+        private static byte[] GetSurveyId(byte[] creator, uint height, string description)
         {
-            return surveyId.Concat(ResponsesKey.AsByteArray());
+            return Sha1(Helper.Concat(Helper.Concat(creator, height.AsByteArray()), description.AsByteArray()));
+        }
+
+        private static byte[] GetSurveyMetadataKey(byte[] surveyId)
+        {
+            return surveyId.Concat(MetadataKey.AsByteArray());
+        }
+
+        private static byte[] GetSurveyRespondersKey(byte[] surveyId)
+        {
+            return surveyId.Concat(RespondersKey.AsByteArray());
+        }
+
+        private static byte[] GetSurveyResponseKey(byte[] surveyId, byte[] responder)
+        {
+            return surveyId.Concat(responder);
         }
 
         #endregion Helper Methods
