@@ -66,18 +66,20 @@ namespace Survey.Contract
             var surveyId = GenerateSurveyId(creator, height, description);
 
 
-            // Put survey in contract storage
-            Storage.Put(Storage.CurrentContext, surveyId, survey);
-
-
             // Encode survey metadata
             var endBlock = height + blockDuration;
 
             var surveyMetadataBytes = EncodingHelper.EncodeSurveyMetadata(false, endBlock, description);
 
 
+            // Put survey in contract storage
+            Storage.Put(Storage.CurrentContext, surveyId, survey);
+
+
             // Put encoded survey metadata in contract storage
-            Storage.Put(Storage.CurrentContext, surveyId, surveyMetadataBytes);
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            Storage.Put(Storage.CurrentContext, surveyMetadataKey, surveyMetadataBytes);
 
 
             // Survey successfully created
@@ -91,7 +93,9 @@ namespace Survey.Contract
 
 
             // Check survey exists
-            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyId);
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyMetadataKey);
 
             if (surveyMetadataBytes == null || surveyMetadataBytes.Length == 0) return false;
 
@@ -107,7 +111,7 @@ namespace Survey.Contract
 
 
             // Put updated survey metadata in contract storage
-            Storage.Put(Storage.CurrentContext, surveyId, surveyMetadataBytes);
+            Storage.Put(Storage.CurrentContext, surveyMetadataKey, surveyMetadataBytes);
 
 
             // Survey successfully closed
@@ -121,7 +125,9 @@ namespace Survey.Contract
 
 
             // Check the survey exists
-            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyId);
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyMetadataKey);
 
             if (surveyMetadataBytes == null || surveyMetadataBytes.Length == 0) return true;
 
@@ -157,7 +163,7 @@ namespace Survey.Contract
             Storage.Delete(Storage.CurrentContext, surveyId);
 
             // Delete survey metadata from contract storage
-            Storage.Delete(Storage.CurrentContext, surveyId);
+            Storage.Delete(Storage.CurrentContext, surveyMetadataKey);
 
 
             // Survey successfully deleted
@@ -179,7 +185,9 @@ namespace Survey.Contract
 
 
             // Check if survey exists
-            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyId);
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
+
+            var surveyMetadataBytes = Storage.Get(Storage.CurrentContext, surveyMetadataKey);
 
             if (surveyMetadataBytes == null || surveyMetadataBytes.Length == 0) return false;
 
@@ -306,6 +314,11 @@ namespace Survey.Contract
         private static byte[] GenerateSurveyId(byte[] creator, uint height, string description)
         {
             return Sha1(Helper.Concat(Helper.Concat(creator, height.AsByteArray()), description.AsByteArray()));
+        }
+
+        private static byte[] GetSurveyMetadataKey(byte[] surveyId)
+        {
+            return surveyId.Concat(MetadataKey.AsByteArray());
         }
 
         private static byte[] GetSurveyRespondersKey(byte[] surveyId)
