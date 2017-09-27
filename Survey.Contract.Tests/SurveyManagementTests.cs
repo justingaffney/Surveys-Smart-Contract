@@ -10,7 +10,7 @@ namespace Survey.Contract.Tests
         [Trait("Contract", "Management")]
         public void CreateSurveySuccessfullyTest()
         {
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
         }
 
@@ -20,7 +20,7 @@ namespace Survey.Contract.Tests
         public void CreateSurveyUnsuccessfullyTest()
         {
             // TODO Create unsuccessful parameters
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
         }
 
@@ -33,7 +33,7 @@ namespace Survey.Contract.Tests
         public void CloseSurveySuccessfullyTest()
         {
             // Create survey first
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
 
             // Close survey
@@ -47,7 +47,7 @@ namespace Survey.Contract.Tests
         public void CloseSurveyUnsuccessfullyTest()
         {
             // Create survey first
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
 
             // Close survey
@@ -65,7 +65,7 @@ namespace Survey.Contract.Tests
         public void DeleteSurveySuccessfullyClosingFirstTest()
         {
             // Create survey first
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
 
             // Close survey
@@ -83,7 +83,7 @@ namespace Survey.Contract.Tests
         public void DeleteSurveyUnsuccessfullyClosingFirstTest()
         {
             // Create survey first
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
 
             // Close survey
@@ -101,7 +101,7 @@ namespace Survey.Contract.Tests
         public void DeleteSurveySuccessfullyNotClosingFirstTest()
         {
             // Create survey first
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
 
             // Delete survey
@@ -115,7 +115,7 @@ namespace Survey.Contract.Tests
         public void DeleteSurveyUnsuccessfullyNotClosingFirstTest()
         {
             // Create survey first
-            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, 10, "Test description");
+            var surveyId = TestHelper.CreateSurvey(TestHelper.TestSurveyCreatorKey, TestHelper.TestSurveyBlockDuration, TestHelper.TestSurveyName, TestHelper.TestSurveyDescription, TestHelper.TestSurveyContents);
             Assert.NotNull(surveyId);
 
             // Delete survey
