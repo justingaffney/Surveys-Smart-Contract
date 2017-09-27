@@ -56,6 +56,16 @@ namespace Survey.Contract
 
         private static byte[] CreateSurvey(byte[] creator, uint blockDuration, string description, byte[] survey)
         {
+            var emptyBytes = new byte[0];
+
+            // Validate parameters
+            if (creator == null || creator.Length != Constants.PublicKeyLengthBytes) return emptyBytes;
+
+            if (blockDuration < Constants.SurveyMinimumBlockDuration) return emptyBytes;
+
+            if (survey == null || survey.Length == 0) return emptyBytes;
+
+
             // Verify creator chose to create survey
             if (!Runtime.CheckWitness(creator)) return new byte[0];
 
@@ -88,6 +98,12 @@ namespace Survey.Contract
 
         private static bool CloseSurvey(byte[] creator, byte[] surveyId)
         {
+            // Validate parameters
+            if (creator == null || creator.Length != Constants.PublicKeyLengthBytes) return false;
+
+            if (surveyId == null || surveyId.Length != Constants.SurveyIdLengthBytes) return false;
+
+
             // Verify creator chose to close survey
             if (!Runtime.CheckWitness(creator)) return false;
 
@@ -120,6 +136,12 @@ namespace Survey.Contract
 
         private static bool DeleteSurvey(byte[] creator, byte[] surveyId)
         {
+            // Validate parameters
+            if (creator == null || creator.Length != Constants.PublicKeyLengthBytes) return false;
+
+            if (surveyId == null || surveyId.Length != Constants.SurveyIdLengthBytes) return false;
+
+
             // Verify creator chose to delete survey
             if (!Runtime.CheckWitness(creator)) return false;
 
@@ -176,6 +198,14 @@ namespace Survey.Contract
         
         private static bool RespondToSurvey(byte[] responder, byte[] surveyId, byte[] response)
         {
+            // Validate parameters
+            if (responder == null || responder.Length != Constants.PublicKeyLengthBytes) return false;
+
+            if (surveyId == null || surveyId.Length != Constants.SurveyIdLengthBytes) return false;
+
+            if (response == null || response.Length == 0) return false;
+
+
             // Check response input is valid
             if (response == null || response.Length == 0) return false;
 
@@ -234,14 +264,23 @@ namespace Survey.Contract
 
         private static byte[] GetSurveyMetadata(byte[] surveyId)
         {
+            // Validate parameters
+            if (surveyId == null || surveyId.Length != Constants.SurveyIdLengthBytes) return new byte[0];
+
+
             // TODO Authenticate request
 
+            var surveyMetadataKey = GetSurveyMetadataKey(surveyId);
 
-            return Storage.Get(Storage.CurrentContext, surveyId);
+            return Storage.Get(Storage.CurrentContext, surveyMetadataKey);
         }
 
         private static byte[] GetSurveyResponses(byte[] surveyId)
         {
+            // Validate parameters
+            if (surveyId == null || surveyId.Length != Constants.SurveyIdLengthBytes) return new byte[0];
+
+
             // TODO Authenticate request
 
 
