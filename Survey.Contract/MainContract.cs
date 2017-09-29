@@ -156,7 +156,6 @@ namespace Survey.Contract
 
             // Delete survey responses
             int currentIndex = 0;
-            int i = 0;
 
             while ((responders.Length - currentIndex) >= Constants.PublicKeyLengthBytes)
             {
@@ -169,7 +168,6 @@ namespace Survey.Contract
 
 
                 currentIndex += Constants.PublicKeyLengthBytes;
-                i++;
             }
                         
             // Delete list of responders
@@ -285,7 +283,6 @@ namespace Survey.Contract
 
             // Get survey responses
             int currentIndex = 0;
-            int i = 0;
 
             while ((responders.Length - currentIndex) >= Constants.PublicKeyLengthBytes)
             {
@@ -301,7 +298,6 @@ namespace Survey.Contract
 
 
                 currentIndex += Constants.PublicKeyLengthBytes;
-                i++;
             }
 
             return responses;

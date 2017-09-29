@@ -14,7 +14,7 @@ namespace Survey.Contract.Tests
 {
     public static class TestHelper
     {
-        private const string SurveryContractFilePath = @"Survey.Contract.avm";
+        private const string SurveyContractFilePath = @"Survey.Contract.avm";
 
         // Test survey creator and responder public keys
         internal static readonly byte[] TestSurveyCreatorKey = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
@@ -37,11 +37,8 @@ namespace Survey.Contract.Tests
 
         internal static byte[] CreateSurvey(byte[] creator, uint blockDuration, string name, string description, byte[] survey)
         {
-            using (var engine = new ExecutionEngine(null, Crypto.Default))
+            using (var engine = LoadContractScript())
             {
-                // Load smart contract script into engine
-                engine.LoadScript(SurveryContractFilePath);
-
                 // Get arguments script
                 var argumentsScript = GetArgumentsScript(Operations.CREATE, creator, blockDuration, name, description, survey);
 
@@ -65,11 +62,8 @@ namespace Survey.Contract.Tests
 
         internal static bool CloseSurvey(byte[] creator, byte[] surveyId)
         {
-            using (var engine = new ExecutionEngine(null, Crypto.Default))
+            using (var engine = LoadContractScript())
             {
-                // Load smart contract script into engine
-                engine.LoadScript(SurveryContractFilePath);
-
                 // Get arguments script
                 var argumentsScript = GetArgumentsScript(Operations.CLOSE, creator, surveyId);
 
@@ -92,11 +86,8 @@ namespace Survey.Contract.Tests
 
         internal static bool DeleteSurvey(byte[] creator, byte[] surveyId)
         {
-            using (var engine = new ExecutionEngine(null, Crypto.Default))
+            using (var engine = LoadContractScript())
             {
-                // Load smart contract script into engine
-                engine.LoadScript(SurveryContractFilePath);
-
                 // Get arguments script
                 var argumentsScript = GetArgumentsScript(Operations.DELETE, creator, surveyId);
 
@@ -123,11 +114,8 @@ namespace Survey.Contract.Tests
 
         internal static bool RespondToSurvey(byte[] responder, byte[] surveyId, byte[] response)
         {
-            using (var engine = new ExecutionEngine(null, Crypto.Default))
+            using (var engine = LoadContractScript())
             {
-                // Load smart contract script into engine
-                engine.LoadScript(SurveryContractFilePath);
-
                 // Get arguments script
                 var argumentsScript = GetArgumentsScript(Operations.RESPOND, responder, surveyId, response);
 
@@ -152,13 +140,16 @@ namespace Survey.Contract.Tests
 
         #region Script Helper Methods
 
-        private static void LoadScript(this ExecutionEngine engine, string compiledContractPath)
+        private static ExecutionEngine LoadContractScript()
         {
-            Debug.Assert(!string.IsNullOrEmpty(compiledContractPath));
+            var engine = new ExecutionEngine(null, Crypto.Default);
 
-            var contractScriptBytes = File.ReadAllBytes(compiledContractPath);
+            // Load smart contract script into engine
+            var contractScriptBytes = File.ReadAllBytes(SurveyContractFilePath);
 
             engine.LoadScript(contractScriptBytes);
+
+            return engine;
         }
 
         private static byte[] GetArgumentsScript(string operationName, params object[] args)
